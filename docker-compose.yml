@@ -24,6 +24,22 @@ services:
       retries: 3
 
   # Redis Cache (optional, for session storage or caching)
+  redis:
+    image: redis:7-alpine
+    container_name: mobile-app-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes --requirepass redis123
+    volumes:
+      - redis_data:/data
+    networks:
+      - mobile-app-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
 
   # Main API Application
   api:
@@ -37,11 +53,13 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=3000
-      - MONGODB_URI=mongodb://admin:password123@mongodb:27017/mobile-app-api
+      - MONGODB_URI=mongodb://api_user:api_password@mongodb:27017/mobile-app-api?authSource=mobile-app-api
     env_file:
       - .env
     depends_on:
       mongodb:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     volumes:
       - ./logs:/app/logs
@@ -72,6 +90,8 @@ services:
 
 volumes:
   mongodb_data:
+    driver: local
+  redis_data:
     driver: local
 
 networks:
