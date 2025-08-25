@@ -18,7 +18,7 @@ RUN apk add --no-cache \
 COPY package*.json ./
 
 # Install dependencies
-RUN npm ci --only=production && npm cache clean --force
+RUN npm i && npm cache clean --force
 
 # Create non-root user for security
 RUN addgroup -g 1001 -S nodejs
