@@ -38,14 +38,10 @@ const callFalAI = async (prompt, imageUrl, parameters = {}, maxRetries = 3) => {
           image_url: imageUrl,
           num_images: parameters.num_images || 1,
           // Add other parameters as needed
-          guidance_scale: parameters.guidance_scale || 7.5,
-          num_inference_steps: parameters.num_inference_steps || 25,
-          seed: parameters.seed || null,
-          width: parameters.width || 1024,
-          height: parameters.height || 1024,
         },
         logs: true,
         onQueueUpdate: (update) => {
+          console.log("FAtih",update)
           if (update.status === 'IN_PROGRESS') {
             update.logs.map((log) => log.message).forEach(message => {
               logger.info(`FAL AI Progress: ${message}`);
@@ -61,6 +57,7 @@ const callFalAI = async (prompt, imageUrl, parameters = {}, maxRetries = 3) => {
 
       return result.data;
     } catch (error) {
+      console.log(error)
       const isRateLimitError = error.message?.includes('429') || 
                               error.message?.includes('Too many requests') ||
                               error.message?.includes('rate limit');
@@ -207,7 +204,7 @@ const createGeneration = asyncHandler(async (req, res) => {
     requestBody: req.body
   });
   
-  const { prompt, negativePrompt, style, quality, steps, guidanceScale, seed, width, height, imageCount } = parameters;
+  const { prompt,  imageCount } = parameters;
 
   // Validate prompt (required)
   if (!prompt || typeof prompt !== 'string' || prompt.trim().length === 0) {
@@ -257,15 +254,6 @@ const createGeneration = asyncHandler(async (req, res) => {
       modelUsed: 'fal-ai/flux-pro/kontext',
       parameters: {
         prompt: prompt.trim(),
-        negativePrompt: negativePrompt || '',
-        style: style || 'photographic',
-        quality: parseInt(quality) || 2,
-        steps: parseInt(steps) || 25,
-        guidanceScale: parseFloat(guidanceScale) || 7.5,
-        seed: seed ? parseInt(seed) : null,
-        width: parseInt(width) || 1024,
-        height: parseInt(height) || 1024,
-        imageCount: numImages,
         num_images: numImages,
       },
       creditsUsed: creditsRequired,

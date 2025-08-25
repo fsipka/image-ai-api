@@ -35,7 +35,7 @@ const userSchema = new mongoose.Schema({
   },
   credits: {
     type: Number,
-    default: 5,
+    default: 1,
     min: [0, 'Credits cannot be negative'],
   },
   profilePicture: {

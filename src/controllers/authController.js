@@ -67,7 +67,6 @@ const register = asyncHandler(async (req, res) => {
 
 const login = asyncHandler(async (req, res) => {
   const { email, password, deviceId } = req.body;
-console.log(req)
   // Find user and include password for comparison
   const user = await User.findOne({ 
     email: email.toLowerCase(),
