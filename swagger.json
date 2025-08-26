@@ -1,0 +1,1733 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Aime AI Image Generation API",
+    "description": "Complete API documentation for Aime AI Image Generation Platform",
+    "version": "1.0.0",
+    "contact": {
+      "name": "Aime Support",
+      "email": "support@aime.com"
+    }
+  },
+  "servers": [
+    {
+      "url": "http://localhost:5000/api",
+      "description": "Development server"
+    },
+    {
+      "url": "https://api.aime.com/api",
+      "description": "Production server"
+    }
+  ],
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
+    "schemas": {
+      "User": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "email": { "type": "string", "format": "email" },
+          "username": { "type": "string" },
+          "firstName": { "type": "string" },
+          "lastName": { "type": "string" },
+          "role": { "type": "string", "enum": ["user", "admin"] },
+          "credits": { "type": "integer" },
+          "isPremium": { "type": "boolean" },
+          "isActive": { "type": "boolean" },
+          "profilePictureUrl": { "type": "string", "format": "uri" },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "lastLogin": { "type": "string", "format": "date-time" }
+        }
+      },
+      "Generation": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "userId": { "type": "string" },
+          "prompt": { "type": "string" },
+          "status": { "type": "string", "enum": ["pending", "processing", "completed", "failed"] },
+          "imageCount": { "type": "integer" },
+          "creditsUsed": { "type": "integer" },
+          "inputImageUrl": { "type": "string", "format": "uri" },
+          "generatedImageUrls": {
+            "type": "array",
+            "items": { "type": "string", "format": "uri" }
+          },
+          "modelUsed": { "type": "string" },
+          "processingTimeMs": { "type": "integer" },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "completedAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "Transaction": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "userId": { "type": "string" },
+          "type": { "type": "string", "enum": ["credit_purchase", "ad_watch", "premium_subscription", "refund", "bonus"] },
+          "status": { "type": "string", "enum": ["pending", "completed", "failed", "refunded"] },
+          "amount": { "type": "number" },
+          "credits": { "type": "integer" },
+          "paymentIntentId": { "type": "string" },
+          "packageId": { "type": "string" },
+          "createdAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "CreditPackage": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "credits": { "type": "integer" },
+          "price": { "type": "number" },
+          "currency": { "type": "string" },
+          "popular": { "type": "boolean" },
+          "bonusCredits": { "type": "integer" }
+        }
+      },
+      "ApiError": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean", "example": false },
+          "error": { "type": "string" },
+          "message": { "type": "string" },
+          "details": { "type": "object" }
+        }
+      },
+      "ApiSuccess": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean", "example": true },
+          "data": { "type": "object" },
+          "message": { "type": "string" }
+        }
+      },
+      "PaginationMeta": {
+        "type": "object",
+        "properties": {
+          "page": { "type": "integer" },
+          "limit": { "type": "integer" },
+          "total": { "type": "integer" },
+          "totalPages": { "type": "integer" },
+          "hasNext": { "type": "boolean" },
+          "hasPrev": { "type": "boolean" }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/auth/register": {
+      "post": {
+        "tags": ["Authentication"],
+        "summary": "Register a new user",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["email", "password", "username", "firstName", "lastName"],
+                "properties": {
+                  "email": { "type": "string", "format": "email" },
+                  "password": { "type": "string", "minLength": 6 },
+                  "username": { "type": "string", "minLength": 3, "maxLength": 20 },
+                  "firstName": { "type": "string", "minLength": 2, "maxLength": 50 },
+                  "lastName": { "type": "string", "minLength": 2, "maxLength": 50 },
+                  "deviceId": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "User registered successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    {
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "user": { "$ref": "#/components/schemas/User" },
+                            "accessToken": { "type": "string" },
+                            "refreshToken": { "type": "string" }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "409": { "$ref": "#/components/responses/Conflict" }
+        }
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "tags": ["Authentication"],
+        "summary": "Login user",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["email", "password"],
+                "properties": {
+                  "email": { "type": "string", "format": "email" },
+                  "password": { "type": "string" },
+                  "deviceId": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Login successful",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    {
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "user": { "$ref": "#/components/schemas/User" },
+                            "accessToken": { "type": "string" },
+                            "refreshToken": { "type": "string" }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/auth/refresh": {
+      "post": {
+        "tags": ["Authentication"],
+        "summary": "Refresh access token",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["refreshToken"],
+                "properties": {
+                  "refreshToken": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Token refreshed successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    {
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "accessToken": { "type": "string" },
+                            "refreshToken": { "type": "string" }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/auth/logout": {
+      "post": {
+        "tags": ["Authentication"],
+        "summary": "Logout user",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "refreshToken": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "$ref": "#/components/responses/Success" }
+        }
+      }
+    },
+    "/auth/logout-all": {
+      "post": {
+        "tags": ["Authentication"],
+        "summary": "Logout from all devices",
+        "responses": {
+          "200": { "$ref": "#/components/responses/Success" }
+        }
+      }
+    },
+    "/auth/profile": {
+      "get": {
+        "tags": ["Authentication"],
+        "summary": "Get current user profile",
+        "responses": {
+          "200": {
+            "description": "User profile retrieved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    {
+                      "properties": {
+                        "data": { "$ref": "#/components/schemas/User" }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/verify": {
+      "get": {
+        "tags": ["Authentication"],
+        "summary": "Verify access token",
+        "responses": {
+          "200": { "$ref": "#/components/responses/Success" },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/auth/change-password": {
+      "put": {
+        "tags": ["Authentication"],
+        "summary": "Change user password",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["currentPassword", "newPassword"],
+                "properties": {
+                  "currentPassword": { "type": "string" },
+                  "newPassword": { "type": "string", "minLength": 6, "maxLength": 50 }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "$ref": "#/components/responses/Success" },
+          "400": { "$ref": "#/components/responses/BadRequest" }
+        }
+      }
+    },
+    "/auth/account": {
+      "delete": {
+        "tags": ["Authentication"],
+        "summary": "Delete/deactivate user account",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["password"],
+                "properties": {
+                  "password": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "$ref": "#/components/responses/Success" }
+        }
+      }
+    },
+    "/generate/upload": {
+      "post": {
+        "tags": ["Generation"],
+        "summary": "Upload reference image",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": ["image"],
+                "properties": {
+                  "image": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Image uploaded successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    {
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "imageUrl": { "type": "string", "format": "uri" },
+                            "filename": { "type": "string" }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/generate/create": {
+      "post": {
+        "tags": ["Generation"],
+        "summary": "Create new AI generation",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["parameters"],
+                "properties": {
+                  "inputImageUrl": { "type": "string", "format": "uri" },
+                  "parameters": {
+                    "type": "object",
+                    "required": ["prompt"],
+                    "properties": {
+                      "prompt": { "type": "string", "minLength": 5, "maxLength": 1000 },
+                      "imageCount": { "type": "integer", "minimum": 1, "maximum": 4, "default": 1 }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Generation created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    {
+                      "properties": {
+                        "data": { "$ref": "#/components/schemas/Generation" }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/generate/{id}": {
+      "get": {
+        "tags": ["Generation"],
+        "summary": "Get specific generation",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Generation retrieved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    {
+                      "properties": {
+                        "data": { "$ref": "#/components/schemas/Generation" }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["Generation"],
+        "summary": "Delete generation",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": { "$ref": "#/components/responses/Success" }
+        }
+      }
+    },
+    "/generate": {
+      "get": {
+        "tags": ["Generation"],
+        "summary": "Get generation history",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": { "type": "integer", "minimum": 1, "default": 1 }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": { "type": "integer", "minimum": 1, "maximum": 50, "default": 10 }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": { "type": "string", "enum": ["pending", "processing", "completed", "failed"] }
+          },
+          {
+            "name": "modelUsed",
+            "in": "query",
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Generation history retrieved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    {
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "generations": {
+                              "type": "array",
+                              "items": { "$ref": "#/components/schemas/Generation" }
+                            },
+                            "pagination": { "$ref": "#/components/schemas/PaginationMeta" }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/generate/{id}/retry": {
+      "post": {
+        "tags": ["Generation"],
+        "summary": "Retry failed generation",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Generation retry initiated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    {
+                      "properties": {
+                        "data": { "$ref": "#/components/schemas/Generation" }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/generate/{id}/cancel": {
+      "delete": {
+        "tags": ["Generation"],
+        "summary": "Cancel pending generation",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": { "$ref": "#/components/responses/Success" }
+        }
+      }
+    },
+    "/generate/stats/overview": {
+      "get": {
+        "tags": ["Generation"],
+        "summary": "Get generation statistics",
+        "responses": {
+          "200": {
+            "description": "Statistics retrieved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    {
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "totalGenerations": { "type": "integer" },
+                            "completedGenerations": { "type": "integer" },
+                            "totalCreditsUsed": { "type": "integer" },
+                            "averageProcessingTime": { "type": "number" }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/payment/packages": {
+      "get": {
+        "tags": ["Payment"],
+        "summary": "Get available credit packages",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Credit packages retrieved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    {
+                      "properties": {
+                        "data": {
+                          "type": "array",
+                          "items": { "$ref": "#/components/schemas/CreditPackage" }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/payment/create-payment-intent": {
+      "post": {
+        "tags": ["Payment"],
+        "summary": "Create Stripe payment intent",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["packageId"],
+                "properties": {
+                  "packageId": { "type": "string" },
+                  "paymentMethodId": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Payment intent created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    {
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "paymentIntentId": { "type": "string" },
+                            "clientSecret": { "type": "string" },
+                            "amount": { "type": "number" },
+                            "currency": { "type": "string" }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/payment/confirm": {
+      "post": {
+        "tags": ["Payment"],
+        "summary": "Confirm payment completion",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["paymentIntentId"],
+                "properties": {
+                  "paymentIntentId": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "$ref": "#/components/responses/Success" }
+        }
+      }
+    },
+    "/payment/webhook": {
+      "post": {
+        "tags": ["Payment"],
+        "summary": "Stripe webhook endpoint",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "type": "object" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "$ref": "#/components/responses/Success" }
+        }
+      }
+    },
+    "/payment/history": {
+      "get": {
+        "tags": ["Payment"],
+        "summary": "Get payment history",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": { "type": "integer", "minimum": 1, "default": 1 }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": { "type": "integer", "minimum": 1, "maximum": 50, "default": 10 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Payment history retrieved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    {
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "transactions": {
+                              "type": "array",
+                              "items": { "$ref": "#/components/schemas/Transaction" }
+                            },
+                            "pagination": { "$ref": "#/components/schemas/PaginationMeta" }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/payment/refund": {
+      "post": {
+        "tags": ["Payment"],
+        "summary": "Request payment refund",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["transactionId"],
+                "properties": {
+                  "transactionId": { "type": "string" },
+                  "reason": { "type": "string", "maxLength": 500 }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "$ref": "#/components/responses/Success" }
+        }
+      }
+    },
+    "/user/profile": {
+      "get": {
+        "tags": ["User"],
+        "summary": "Get user profile with stats",
+        "responses": {
+          "200": {
+            "description": "Profile retrieved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    {
+                      "properties": {
+                        "data": { "$ref": "#/components/schemas/User" }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": ["User"],
+        "summary": "Update user profile",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "firstName": { "type": "string", "minLength": 2, "maxLength": 50 },
+                  "lastName": { "type": "string", "minLength": 2, "maxLength": 50 },
+                  "username": { "type": "string", "minLength": 3, "maxLength": 20 }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "$ref": "#/components/responses/Success" }
+        }
+      }
+    },
+    "/user/profile-picture": {
+      "post": {
+        "tags": ["User"],
+        "summary": "Upload profile picture",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": ["profilePicture"],
+                "properties": {
+                  "profilePicture": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Profile picture uploaded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    {
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "profilePictureUrl": { "type": "string", "format": "uri" }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["User"],
+        "summary": "Remove profile picture",
+        "responses": {
+          "200": { "$ref": "#/components/responses/Success" }
+        }
+      }
+    },
+    "/user/credits": {
+      "get": {
+        "tags": ["User"],
+        "summary": "Get user credits and recent transactions",
+        "responses": {
+          "200": {
+            "description": "Credits information retrieved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    {
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "credits": { "type": "integer" },
+                            "recentTransactions": {
+                              "type": "array",
+                              "items": { "$ref": "#/components/schemas/Transaction" }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/user/generations": {
+      "get": {
+        "tags": ["User"],
+        "summary": "Get user generation history",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": { "type": "integer", "minimum": 1, "default": 1 }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": { "type": "integer", "minimum": 1, "maximum": 50, "default": 10 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Generation history retrieved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    {
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "generations": {
+                              "type": "array",
+                              "items": { "$ref": "#/components/schemas/Generation" }
+                            },
+                            "pagination": { "$ref": "#/components/schemas/PaginationMeta" }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/user/transactions": {
+      "get": {
+        "tags": ["User"],
+        "summary": "Get user transaction history",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": { "type": "integer", "minimum": 1, "default": 1 }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": { "type": "integer", "minimum": 1, "maximum": 50, "default": 10 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Transaction history retrieved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    {
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "transactions": {
+                              "type": "array",
+                              "items": { "$ref": "#/components/schemas/Transaction" }
+                            },
+                            "pagination": { "$ref": "#/components/schemas/PaginationMeta" }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/user/dashboard": {
+      "get": {
+        "tags": ["User"],
+        "summary": "Get dashboard statistics",
+        "responses": {
+          "200": {
+            "description": "Dashboard stats retrieved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    {
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "totalGenerations": { "type": "integer" },
+                            "creditsUsed": { "type": "integer" },
+                            "creditsRemaining": { "type": "integer" },
+                            "averageProcessingTime": { "type": "number" }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/user/notifications": {
+      "get": {
+        "tags": ["User"],
+        "summary": "Get user notifications",
+        "responses": {
+          "200": {
+            "description": "Notifications retrieved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    {
+                      "properties": {
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": { "type": "string" },
+                              "title": { "type": "string" },
+                              "message": { "type": "string" },
+                              "type": { "type": "string" },
+                              "read": { "type": "boolean" },
+                              "createdAt": { "type": "string", "format": "date-time" }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/stats": {
+      "get": {
+        "tags": ["Admin"],
+        "summary": "Get comprehensive app statistics",
+        "parameters": [
+          {
+            "name": "days",
+            "in": "query",
+            "schema": { "type": "integer", "minimum": 1, "maximum": 365, "default": 30 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "App statistics retrieved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    {
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "users": {
+                              "type": "object",
+                              "properties": {
+                                "total": { "type": "integer" },
+                                "active": { "type": "integer" },
+                                "premium": { "type": "integer" },
+                                "newThisPeriod": { "type": "integer" }
+                              }
+                            },
+                            "generations": {
+                              "type": "object",
+                              "properties": {
+                                "total": { "type": "integer" },
+                                "completed": { "type": "integer" },
+                                "failed": { "type": "integer" },
+                                "processing": { "type": "integer" }
+                              }
+                            },
+                            "revenue": {
+                              "type": "object",
+                              "properties": {
+                                "total": { "type": "number" },
+                                "thisPeriod": { "type": "number" },
+                                "transactions": { "type": "integer" }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/users": {
+      "get": {
+        "tags": ["Admin"],
+        "summary": "Get paginated list of users",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": { "type": "integer", "minimum": 1, "default": 1 }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": { "type": "integer", "minimum": 1, "maximum": 100, "default": 20 }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "schema": { "type": "string", "minLength": 1, "maxLength": 100 }
+          },
+          {
+            "name": "role",
+            "in": "query",
+            "schema": { "type": "string", "enum": ["user", "admin"] }
+          },
+          {
+            "name": "isPremium",
+            "in": "query",
+            "schema": { "type": "string", "enum": ["true", "false"] }
+          },
+          {
+            "name": "isActive",
+            "in": "query",
+            "schema": { "type": "string", "enum": ["true", "false"] }
+          },
+          {
+            "name": "sortBy",
+            "in": "query",
+            "schema": { "type": "string", "enum": ["createdAt", "lastLogin", "credits", "email", "username"], "default": "createdAt" }
+          },
+          {
+            "name": "sortOrder",
+            "in": "query",
+            "schema": { "type": "string", "enum": ["asc", "desc"], "default": "desc" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Users list retrieved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    {
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "users": {
+                              "type": "array",
+                              "items": { "$ref": "#/components/schemas/User" }
+                            },
+                            "pagination": { "$ref": "#/components/schemas/PaginationMeta" }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/users/{userId}": {
+      "get": {
+        "tags": ["Admin"],
+        "summary": "Get detailed user information",
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "User details retrieved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    {
+                      "properties": {
+                        "data": { "$ref": "#/components/schemas/User" }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": ["Admin"],
+        "summary": "Update user information",
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "firstName": { "type": "string", "minLength": 2, "maxLength": 50 },
+                  "lastName": { "type": "string", "minLength": 2, "maxLength": 50 },
+                  "username": { "type": "string", "minLength": 3, "maxLength": 20 },
+                  "role": { "type": "string", "enum": ["user", "admin"] },
+                  "isPremium": { "type": "boolean" },
+                  "isActive": { "type": "boolean" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "$ref": "#/components/responses/Success" }
+        }
+      }
+    },
+    "/admin/users/{userId}/credits": {
+      "post": {
+        "tags": ["Admin"],
+        "summary": "Add credits to user account",
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["credits"],
+                "properties": {
+                  "credits": { "type": "integer", "minimum": 1 },
+                  "reason": { "type": "string", "maxLength": 200 }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "$ref": "#/components/responses/Success" }
+        }
+      }
+    },
+    "/admin/users/{userId}/status": {
+      "patch": {
+        "tags": ["Admin"],
+        "summary": "Toggle user active status",
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["isActive"],
+                "properties": {
+                  "isActive": { "type": "boolean" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "$ref": "#/components/responses/Success" }
+        }
+      }
+    },
+    "/admin/generations": {
+      "get": {
+        "tags": ["Admin"],
+        "summary": "Get paginated list of generations",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": { "type": "integer", "minimum": 1, "default": 1 }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": { "type": "integer", "minimum": 1, "maximum": 100, "default": 20 }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": { "type": "string", "enum": ["pending", "processing", "completed", "failed"] }
+          },
+          {
+            "name": "userId",
+            "in": "query",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "sortBy",
+            "in": "query",
+            "schema": { "type": "string", "enum": ["createdAt", "status", "creditsUsed", "processingTimeMs"], "default": "createdAt" }
+          },
+          {
+            "name": "sortOrder",
+            "in": "query",
+            "schema": { "type": "string", "enum": ["asc", "desc"], "default": "desc" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Generations list retrieved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    {
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "generations": {
+                              "type": "array",
+                              "items": { "$ref": "#/components/schemas/Generation" }
+                            },
+                            "pagination": { "$ref": "#/components/schemas/PaginationMeta" }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/generations/{generationId}": {
+      "delete": {
+        "tags": ["Admin"],
+        "summary": "Delete a generation",
+        "parameters": [
+          {
+            "name": "generationId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": { "$ref": "#/components/responses/Success" }
+        }
+      }
+    },
+    "/admin/transactions": {
+      "get": {
+        "tags": ["Admin"],
+        "summary": "Get paginated list of transactions",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": { "type": "integer", "minimum": 1, "default": 1 }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": { "type": "integer", "minimum": 1, "maximum": 100, "default": 20 }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "schema": { "type": "string", "enum": ["credit_purchase", "ad_watch", "premium_subscription", "refund", "bonus"] }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": { "type": "string", "enum": ["pending", "completed", "failed", "refunded"] }
+          },
+          {
+            "name": "userId",
+            "in": "query",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "sortBy",
+            "in": "query",
+            "schema": { "type": "string", "enum": ["createdAt", "amount", "status", "type"], "default": "createdAt" }
+          },
+          {
+            "name": "sortOrder",
+            "in": "query",
+            "schema": { "type": "string", "enum": ["asc", "desc"], "default": "desc" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Transactions list retrieved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    {
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "transactions": {
+                              "type": "array",
+                              "items": { "$ref": "#/components/schemas/Transaction" }
+                            },
+                            "pagination": { "$ref": "#/components/schemas/PaginationMeta" }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/revenue": {
+      "get": {
+        "tags": ["Admin"],
+        "summary": "Get revenue statistics",
+        "parameters": [
+          {
+            "name": "startDate",
+            "in": "query",
+            "schema": { "type": "string", "format": "date" }
+          },
+          {
+            "name": "endDate",
+            "in": "query",
+            "schema": { "type": "string", "format": "date" }
+          },
+          {
+            "name": "groupBy",
+            "in": "query",
+            "schema": { "type": "string", "enum": ["hour", "day", "month"], "default": "day" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Revenue statistics retrieved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/ApiSuccess" },
+                    {
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "total": { "type": "number" },
+                            "period": { "type": "number" },
+                            "breakdown": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "date": { "type": "string" },
+                                  "revenue": { "type": "number" },
+                                  "transactions": { "type": "integer" }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "responses": {
+      "Success": {
+        "description": "Operation successful",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/ApiSuccess" }
+          }
+        }
+      },
+      "BadRequest": {
+        "description": "Bad request",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/ApiError" }
+          }
+        }
+      },
+      "Unauthorized": {
+        "description": "Unauthorized",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/ApiError" }
+          }
+        }
+      },
+      "Forbidden": {
+        "description": "Forbidden",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/ApiError" }
+          }
+        }
+      },
+      "NotFound": {
+        "description": "Resource not found",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/ApiError" }
+          }
+        }
+      },
+      "Conflict": {
+        "description": "Conflict",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/ApiError" }
+          }
+        }
+      },
+      "TooManyRequests": {
+        "description": "Too many requests",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/ApiError" }
+          }
+        }
+      },
+      "InternalServerError": {
+        "description": "Internal server error",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/ApiError" }
+          }
+        }
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "Authentication",
+      "description": "User authentication and account management"
+    },
+    {
+      "name": "Generation",
+      "description": "AI image generation operations"
+    },
+    {
+      "name": "Payment",
+      "description": "Payment and credit system"
+    },
+    {
+      "name": "User",
+      "description": "User profile and data management"
+    },
+    {
+      "name": "Admin",
+      "description": "Administrative operations (admin access required)"
+    }
+  ]
+}
