@@ -1,5 +1,4 @@
 const rateLimit = require('express-rate-limit');
-const slowDown = require('express-slow-down');
 const config = require('../config');
 const { logger } = require('../utils/logger');
 const ApiResponse = require('../utils/apiResponse');
@@ -23,26 +22,26 @@ const generalLimiter = rateLimit({
 
 // Strict limiter for authentication endpoints
 const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
+  windowMs: 5 * 60 * 1000, // 5 minutes
   max: 5, // 5 attempts per window
   message: {
     success: false,
     message: 'Too many authentication attempts, please try again later',
-    retryAfter: 15 * 60,
+    retryAfter: 5 * 60,
   },
   standardHeaders: true,
   legacyHeaders: false,
   skipSuccessfulRequests: true,
   handler: (req, res) => {
     logger.warn(`Auth rate limit exceeded for IP: ${req.ip}`);
-    ApiResponse.tooManyRequestsError(res, 'Too many authentication attempts, please try again in 15 minutes');
+    ApiResponse.tooManyRequestsError(res, 'Too many authentication attempts, please try again in 5 minutes');
   },
 });
 
 // Generation rate limiter (more restrictive)
 const generationLimiter = rateLimit({
   windowMs: 60 * 1000, // 1 minute
-  max: 20, // 5 generations per minute
+  max: 30, // 30 generations per minute
   message: {
     success: false,
     message: 'Too many generation requests, please slow down',
@@ -62,12 +61,12 @@ const generationLimiter = rateLimit({
 
 // Payment rate limiter
 const paymentLimiter = rateLimit({
-  windowMs: 5 * 60 * 1000, // 5 minutes
-  max: 3, // 3 payment attempts per 5 minutes
+  windowMs: 60 * 1000, // 1 minute
+  max: 3, // 3 payment attempts per minute
   message: {
     success: false,
     message: 'Too many payment attempts, please try again later',
-    retryAfter: 5 * 60,
+    retryAfter: 60,
   },
   standardHeaders: true,
   legacyHeaders: false,
@@ -100,24 +99,11 @@ const adminLimiter = rateLimit({
   },
 });
 
-// Speed limiter (progressively slow down requests)
-const speedLimiter = slowDown({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  delayAfter: 10, // Allow 10 requests per window at full speed
-  delayMs: 500, // Add 500ms delay per request after delayAfter
-  maxDelayMs: 20000, // Maximum delay of 20 seconds
-  skipFailedRequests: false,
-  skipSuccessfulRequests: false,
-  onLimitReached: (req, res) => {
-    logger.warn(`Speed limit reached for IP: ${req.ip}`);
-  },
-});
-
 // Flexible rate limiter for different user types
 const flexibleLimiter = (options = {}) => {
   const defaultOptions = {
     windowMs: 15 * 60 * 1000,
-    freeMax: 10,
+    freeMax: 100,
     premiumMax: 100,
     adminMax: 1000,
   };
@@ -174,7 +160,6 @@ module.exports = {
   generationLimiter,
   paymentLimiter,
   adminLimiter,
-  speedLimiter,
   flexibleLimiter,
   createRateLimiter,
 };
