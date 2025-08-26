@@ -23,7 +23,6 @@ services:
       timeout: 10s
       retries: 3
 
-
   # Main API Application
   api:
     build: 
@@ -31,8 +30,8 @@ services:
       dockerfile: Dockerfile
     container_name: mobile-app-api
     restart: unless-stopped
-    ports:
-      - "3000:3000"
+    expose:
+      - "3000" # Nginx kullanacağı için dışarı publish etmiyoruz
     environment:
       - NODE_ENV=production
       - PORT=3000
@@ -53,7 +52,7 @@ services:
       timeout: 10s
       retries: 3
 
-  # Nginx Reverse Proxy (optional)
+  # Nginx Reverse Proxy with SSL
   nginx:
     image: nginx:alpine
     container_name: mobile-app-nginx
