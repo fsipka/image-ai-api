@@ -39,6 +39,22 @@ const register = asyncHandler(async (req, res) => {
   user.refreshTokens.push({ token: refreshToken });
   await user.save();
 
+  // Create signup bonus transaction
+  const Transaction = require('../models/Transaction');
+  const signupTransaction = await Transaction.create({
+    userId: user._id,
+    type: 'signup_bonus',
+    amount: 0,
+    creditsAdded: 1,
+    description: 'Welcome bonus - Free credit',
+    status: 'completed',
+    metadata: {
+      bonusType: 'signup',
+      ipAddress: req.ip,
+      userAgent: req.get('User-Agent'),
+    },
+  });
+
   // Send welcome email (don't wait for it)
   sendWelcomeEmail(user).catch(err => {
     console.error('Failed to send welcome email:', err);
@@ -349,6 +365,23 @@ const googleSignIn = asyncHandler(async (req, res) => {
       };
 
       user = await User.create(userData);
+      
+      // Create signup bonus transaction for new Google users
+      const Transaction = require('../models/Transaction');
+      const signupTransaction = await Transaction.create({
+        userId: user._id,
+        type: 'signup_bonus',
+        amount: 0,
+        creditsAdded: 1,
+        description: 'Welcome bonus - Free credit (Google Sign-up)',
+        status: 'completed',
+        metadata: {
+          bonusType: 'google_signup',
+          googleId: googleId,
+          ipAddress: req.ip,
+          userAgent: req.get('User-Agent'),
+        },
+      });
       
       // Send welcome email (don't wait for it)
       sendWelcomeEmail(user).catch(err => {
