@@ -34,6 +34,24 @@ const deleteAccountSchema = Joi.object({
   }),
 });
 
+const googleSignInSchema = Joi.object({
+  idToken: Joi.string().required().messages({
+    'any.required': 'Google ID token is required',
+  }),
+  email: Joi.string().email().required().messages({
+    'string.email': 'Please provide a valid email address',
+    'any.required': 'Email is required',
+  }),
+  firstName: Joi.string().required().messages({
+    'any.required': 'First name is required',
+  }),
+  lastName: Joi.string().optional().allow(''),
+  googleId: Joi.string().required().messages({
+    'any.required': 'Google ID is required',
+  }),
+  photo: Joi.string().uri().optional().allow(''),
+});
+
 /**
  * @route   POST /api/auth/register
  * @desc    Register a new user
@@ -49,6 +67,14 @@ router.post('/register', validate(registerSchema), authController.register);
  * @body    { email, password, deviceId? }
  */
 router.post('/login', validate(loginSchema), authController.login);
+
+/**
+ * @route   POST /api/auth/google
+ * @desc    Sign in/up with Google
+ * @access  Public
+ * @body    { idToken, email, firstName, lastName, googleId, photo? }
+ */
+router.post('/google', validate(googleSignInSchema), authController.googleSignIn);
 
 /**
  * @route   POST /api/auth/refresh

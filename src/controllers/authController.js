@@ -3,6 +3,7 @@ const jwt = require('../utils/jwt');
 const ApiResponse = require('../utils/apiResponse');
 const { sendWelcomeEmail } = require('../utils/email');
 const { asyncHandler } = require('../middleware/errorHandler');
+const { OAuth2Client } = require('google-auth-library');
 
 const register = asyncHandler(async (req, res) => {
   const { email, password, username, firstName, lastName, deviceId } = req.body;
@@ -291,9 +292,113 @@ const deleteAccount = asyncHandler(async (req, res) => {
   return ApiResponse.success(res, null, 'Account deactivated successfully');
 });
 
+const googleSignIn = asyncHandler(async (req, res) => {
+  const { idToken, email, firstName, lastName, googleId, photo } = req.body;
+
+  if (!idToken || !email || !googleId) {
+    return ApiResponse.badRequestError(res, 'Google ID token, email, and Google ID are required');
+  }
+
+  try {
+    // Initialize Google OAuth client
+    const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+    
+    // Verify the Google ID token
+    const ticket = await client.verifyIdToken({
+      idToken,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+    
+    const payload = ticket.getPayload();
+    
+    // Verify that the email matches
+    if (payload.email !== email || payload.sub !== googleId) {
+      return ApiResponse.unauthorizedError(res, 'Invalid Google ID token');
+    }
+
+    // Check if user already exists
+    let user = await User.findOne({
+      $or: [
+        { email: email.toLowerCase() },
+        { googleId: googleId }
+      ],
+    });
+
+    if (user) {
+      // User exists, update Google ID if not set
+      if (!user.googleId) {
+        user.googleId = googleId;
+        user.profilePicture = photo || user.profilePicture;
+        await user.save();
+      }
+      
+      // Update last login
+      user.lastLogin = new Date();
+      await user.save();
+    } else {
+      // Create new user
+      const userData = {
+        email: email.toLowerCase(),
+        googleId,
+        firstName: firstName || 'User',
+        lastName: lastName || '',
+        username: Math.random().toString().substring(2, 12), // Random username
+        profilePicture: photo,
+        lastLogin: new Date(),
+        isEmailVerified: true, // Google accounts are pre-verified
+      };
+
+      user = await User.create(userData);
+      
+      // Send welcome email (don't wait for it)
+      sendWelcomeEmail(user).catch(err => {
+        console.error('Failed to send welcome email:', err);
+      });
+    }
+
+    // Generate tokens
+    const tokenPayload = { id: user._id, email: user.email, role: user.role };
+    const { accessToken, refreshToken } = jwt.generateTokens(tokenPayload);
+
+    // Add refresh token to user
+    user.refreshTokens.push({ token: refreshToken });
+    if (user.refreshTokens.length > 5) {
+      user.refreshTokens = user.refreshTokens.slice(-5);
+    }
+    await user.save();
+
+    // Remove sensitive fields
+    const userResponse = {
+      id: user._id,
+      email: user.email,
+      username: user.username,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      fullName: user.fullName,
+      credits: user.credits,
+      isPremium: user.isPremium,
+      isPremiumActive: user.isPremiumActive,
+      role: user.role,
+      profilePicture: user.profilePicture,
+      createdAt: user.createdAt,
+    };
+
+    return ApiResponse.success(res, {
+      user: userResponse,
+      accessToken,
+      refreshToken,
+    }, user.isNew ? 'Account created successfully with Google' : 'Google sign-in successful');
+
+  } catch (error) {
+    console.error('Google sign-in error:', error);
+    return ApiResponse.unauthorizedError(res, 'Invalid Google ID token');
+  }
+});
+
 module.exports = {
   register,
   login,
+  googleSignIn,
   refreshToken,
   logout,
   logoutAll,
