@@ -590,6 +590,23 @@ const processGeneration = async (generationId) => {
     if (user && !user.isPremiumActive) {
       await user.deductCredits(generation.creditsUsed);
       logger.info(`Credits deducted for successful generation: ${generation.creditsUsed} for user ${user._id}`);
+      
+      // Create transaction record for credit usage
+      const Transaction = require('../models/Transaction');
+      await Transaction.create({
+        userId: user._id,
+        type: 'credit_usage',
+        amount: 0,
+        creditsAdded: -generation.creditsUsed, // Negative for deduction
+        description: `AI Image Generation - ${generation.prompt.substring(0, 50)}${generation.prompt.length > 50 ? '...' : ''}`,
+        status: 'completed',
+        metadata: {
+          generationId: generation._id,
+          prompt: generation.prompt,
+          model: generation.model,
+          imagesGenerated: generatedImageUrls.length,
+        },
+      });
     }
     
     logger.info(`Completed generation: ${generationId}`);

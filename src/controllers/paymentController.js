@@ -374,13 +374,23 @@ const addCreditsFromRevenueCat = asyncHandler(async (req, res) => {
   const { productId, credits, customerInfo } = req.body;
 
   try {
+    // Get package info for better description
+    const packageNames = {
+      'try': 'Try Package',
+      'mini': 'Mini Package', 
+      'starter': 'Starter Package',
+      'popular': 'Popular Package',
+      'value': 'Value Package',
+      'mega': 'Mega Package',
+    };
+    const packageName = packageNames[productId] || 'Credit Package';
     // Create transaction record for RevenueCat purchase
     const transactionData = {
       userId: user._id,
       type: 'credit_purchase',
       amount: 0, // RevenueCat handles pricing
       creditsAdded: credits,
-      description: `RevenueCat purchase - ${productId}`,
+      description: `${packageName} - ${credits} Credits`,
       status: 'completed', // RevenueCat verified the purchase
       metadata: {
         productId,

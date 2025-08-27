@@ -46,7 +46,7 @@ const register = asyncHandler(async (req, res) => {
     type: 'signup_bonus',
     amount: 0,
     creditsAdded: 1,
-    description: 'Welcome bonus - Free credit',
+    description: 'Welcome Bonus - Free Credit',
     status: 'completed',
     metadata: {
       bonusType: 'signup',
@@ -373,7 +373,7 @@ const googleSignIn = asyncHandler(async (req, res) => {
         type: 'signup_bonus',
         amount: 0,
         creditsAdded: 1,
-        description: 'Welcome bonus - Free credit (Google Sign-up)',
+        description: 'Welcome Bonus - Free Credit (Google Sign-Up)',
         status: 'completed',
         metadata: {
           bonusType: 'google_signup',
