@@ -369,6 +369,47 @@ const processRefund = async (transaction, refund) => {
   logger.info(`Refund processed: ${refund.id} for transaction ${transaction._id}`);
 };
 
+const addCreditsFromRevenueCat = asyncHandler(async (req, res) => {
+  const user = req.user;
+  const { productId, credits, customerInfo } = req.body;
+
+  try {
+    // Create transaction record for RevenueCat purchase
+    const transactionData = {
+      userId: user._id,
+      type: 'credit_purchase',
+      amount: 0, // RevenueCat handles pricing
+      creditsAdded: credits,
+      description: `RevenueCat purchase - ${productId}`,
+      status: 'completed', // RevenueCat verified the purchase
+      metadata: {
+        productId,
+        revenueCatUserId: customerInfo?.userId,
+        originalPurchaseDate: customerInfo?.originalPurchaseDate,
+        ipAddress: req.ip,
+        userAgent: req.get('User-Agent'),
+      },
+    };
+
+    const transaction = await Transaction.create(transactionData);
+
+    // Add credits to user account
+    await user.addCredits(credits);
+
+    logger.info(`RevenueCat credits added: ${credits} for user ${user._id}, product ${productId}`);
+
+    return ApiResponse.success(res, {
+      transactionId: transaction._id,
+      creditsAdded: credits,
+      newBalance: user.credits + credits,
+    }, 'Credits added successfully');
+
+  } catch (error) {
+    logger.error('RevenueCat credit addition failed:', error);
+    return ApiResponse.serverError(res, 'Failed to add credits');
+  }
+});
+
 module.exports = {
   getCreditPackages,
   createPaymentIntent,
@@ -376,4 +417,5 @@ module.exports = {
   handleStripeWebhook,
   getPaymentHistory,
   refundPayment,
+  addCreditsFromRevenueCat,
 };

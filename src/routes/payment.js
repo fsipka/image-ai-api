@@ -24,6 +24,22 @@ const refundRequestSchema = Joi.object({
   }),
 });
 
+const revenueCatWebhookSchema = Joi.object({
+  productId: Joi.string().required().messages({
+    'any.required': 'Product ID is required',
+  }),
+  credits: Joi.number().integer().min(1).required().messages({
+    'number.integer': 'Credits must be an integer',
+    'number.min': 'Credits must be at least 1',
+    'any.required': 'Credits amount is required',
+  }),
+  customerInfo: Joi.object({
+    userId: Joi.string().optional(),
+    originalPurchaseDate: Joi.date().optional(),
+    latestExpirationDate: Joi.date().optional(),
+  }).optional(),
+});
+
 /**
  * @route   GET /api/payment/packages
  * @desc    Get available credit packages
@@ -91,6 +107,19 @@ router.post('/refund',
   paymentLimiter,
   validate(refundRequestSchema),
   paymentController.refundPayment
+);
+
+/**
+ * @route   POST /api/payment/revenuecat-webhook
+ * @desc    RevenueCat webhook endpoint for adding credits
+ * @access  Private
+ * @body    { productId, credits, customerInfo? }
+ */
+router.post('/revenuecat-webhook',
+  authenticateToken,
+  paymentLimiter,
+  validate(revenueCatWebhookSchema),
+  paymentController.addCreditsFromRevenueCat
 );
 
 module.exports = router;

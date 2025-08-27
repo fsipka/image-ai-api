@@ -23,7 +23,7 @@ const generalLimiter = rateLimit({
 // Strict limiter for authentication endpoints
 const authLimiter = rateLimit({
   windowMs: 5 * 60 * 1000, // 5 minutes
-  max: 5, // 5 attempts per window
+  max: 15, // 15 attempts per window
   message: {
     success: false,
     message: 'Too many authentication attempts, please try again later',
@@ -41,7 +41,7 @@ const authLimiter = rateLimit({
 // Generation rate limiter (more restrictive)
 const generationLimiter = rateLimit({
   windowMs: 60 * 1000, // 1 minute
-  max: 30, // 30 generations per minute
+  max: 50, // 50 generations per minute
   message: {
     success: false,
     message: 'Too many generation requests, please slow down',
@@ -62,7 +62,7 @@ const generationLimiter = rateLimit({
 // Payment rate limiter
 const paymentLimiter = rateLimit({
   windowMs: 60 * 1000, // 1 minute
-  max: 3, // 3 payment attempts per minute
+  max: 10, // 10 payment attempts per minute
   message: {
     success: false,
     message: 'Too many payment attempts, please try again later',
@@ -103,9 +103,9 @@ const adminLimiter = rateLimit({
 const flexibleLimiter = (options = {}) => {
   const defaultOptions = {
     windowMs: 15 * 60 * 1000,
-    freeMax: 100,
-    premiumMax: 100,
-    adminMax: 1000,
+    freeMax: 200,
+    premiumMax: 500,
+    adminMax: 2000,
   };
 
   const settings = { ...defaultOptions, ...options };
