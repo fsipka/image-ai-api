@@ -103,9 +103,9 @@ const adminLimiter = rateLimit({
 const flexibleLimiter = (options = {}) => {
   const defaultOptions = {
     windowMs: 15 * 60 * 1000,
-    freeMax: 500,
-    premiumMax: 1000,
-    adminMax: 5000,
+    freeMax: 1000,
+    premiumMax: 2000,
+    adminMax: 10000,
   };
 
   const settings = { ...defaultOptions, ...options };

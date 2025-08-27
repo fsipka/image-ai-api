@@ -8,7 +8,7 @@ const transactionSchema = new mongoose.Schema({
   },
   type: {
     type: String,
-    enum: ['credit_purchase', 'refund', 'bonus'],
+    enum: ['credit_purchase', 'credit_usage', 'signup_bonus', 'premium_subscription', 'refund', 'bonus'],
     required: [true, 'Transaction type is required'],
   },
   amount: {
@@ -19,7 +19,7 @@ const transactionSchema = new mongoose.Schema({
   creditsAdded: {
     type: Number,
     required: [true, 'Credits added is required'],
-    min: [0, 'Credits added cannot be negative'],
+    // Allow negative values for credit usage (deduction)
   },
   paymentId: {
     type: String,
