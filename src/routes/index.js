@@ -22,9 +22,9 @@ router.get('/health', (req, res) => {
 // API version info
 router.get('/', (req, res) => {
   return ApiResponse.success(res, {
-    name: 'Mobile App API',
+    name: 'Aime App',
     version: '1.0.0',
-    description: 'Complete Node.js Express API for mobile app with AI image generation',
+    description: 'Mobile app for AI image generation',
     documentation: '/api/docs',
     endpoints: {
       auth: '/api/auth',
@@ -33,7 +33,7 @@ router.get('/', (req, res) => {
       payment: '/api/payment',
       admin: '/api/admin',
     },
-  }, 'Welcome to Mobile App API');
+  }, 'Welcome to Aime App');
 });
 
 // Mount route modules

@@ -32,7 +32,7 @@ const sendEmail = async (options) => {
   }
 
   const mailOptions = {
-    from: `Mobile App API <${config.email.user}>`,
+    from: `Aime App <${config.email.user}>`,
     to: options.to,
     subject: options.subject,
     text: options.text,
