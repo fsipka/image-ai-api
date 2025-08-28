@@ -1,8 +1,8 @@
 // MongoDB initialization script
-print('Initializing mobile-app-api database...');
+print('Initializing mobile-app-api-new database...');
 
-// Switch to the mobile-app-api database
-db = db.getSiblingDB('mobile-app-api');
+// Switch to the mobile-app-api-new database
+db = db.getSiblingDB('mobile-app-api-new');
 
 // Create application user with read/write permissions
 db.createUser({
@@ -11,7 +11,7 @@ db.createUser({
   roles: [
     {
       role: 'readWrite',
-      db: 'mobile-app-api'
+      db: 'mobile-app-api-new'
     }
   ]
 });
