@@ -18,7 +18,7 @@ services:
     networks:
       - mobile-app-network
     healthcheck:
-      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/mobile-app-api --quiet
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/mobile-app-api-new --quiet
       interval: 30s
       timeout: 10s
       retries: 3
