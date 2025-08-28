@@ -1,12 +1,15 @@
 const User = require('../models/User');
 const jwt = require('../utils/jwt');
+const config = require('../config');
 const ApiResponse = require('../utils/apiResponse');
-const { sendWelcomeEmail } = require('../utils/email');
+const { sendWelcomeEmail, sendEmailVerificationCode, sendPasswordResetCode } = require('../utils/email');
 const { asyncHandler } = require('../middleware/errorHandler');
 const { OAuth2Client } = require('google-auth-library');
 
 const register = asyncHandler(async (req, res) => {
   const { email, password, username, firstName, lastName, deviceId } = req.body;
+
+  console.log('Registration attempt:', { email: email.toLowerCase(), username, firstName, lastName });
 
   // Check if user already exists
   const existingUser = await User.findOne({
@@ -15,6 +18,7 @@ const register = asyncHandler(async (req, res) => {
 
   if (existingUser) {
     const field = existingUser.email === email.toLowerCase() ? 'email' : 'username';
+    console.log('User already exists:', { field, existingEmail: existingUser.email, existingUsername: existingUser.username });
     return ApiResponse.conflictError(res, `User with this ${field} already exists`);
   }
 
@@ -27,17 +31,38 @@ const register = asyncHandler(async (req, res) => {
     lastName,
     deviceId,
     lastLogin: new Date(),
+    // Don't include googleId field at all for normal registration
   };
 
-  const user = await User.create(userData);
+  let user;
+  try {
+    user = await User.create(userData);
+  } catch (error) {
+    console.log('Registration error:', { code: error.code, message: error.message, keyPattern: error.keyPattern, keyValue: error.keyValue });
+    if (error.code === 11000) {
+      // Handle duplicate key error
+      if (error.keyPattern && error.keyPattern.googleId) {
+        return ApiResponse.conflictError(res, 'This Google account is already registered');
+      }
+      if (error.keyPattern && error.keyPattern.email) {
+        return ApiResponse.conflictError(res, 'User with this email already exists');
+      }
+      if (error.keyPattern && error.keyPattern.username) {
+        return ApiResponse.conflictError(res, 'Username is already taken');
+      }
+      return ApiResponse.conflictError(res, 'User already exists');
+    }
+    throw error;
+  }
 
-  // Generate tokens
-  const tokenPayload = { id: user._id, email: user.email, role: user.role };
-  const { accessToken, refreshToken } = jwt.generateTokens(tokenPayload);
+  // Generate email verification code
+  const verificationCode = user.generateEmailVerificationCode();
+  await user.save({ validateBeforeSave: false });
 
-  // Add refresh token to user
-  user.refreshTokens.push({ token: refreshToken });
-  await user.save();
+  // Send verification email (don't wait for it)
+  sendEmailVerificationCode(user, verificationCode).catch(err => {
+    console.error('Failed to send verification email:', err);
+  });
 
   // Create signup bonus transaction
   const Transaction = require('../models/Transaction');
@@ -55,12 +80,7 @@ const register = asyncHandler(async (req, res) => {
     },
   });
 
-  // Send welcome email (don't wait for it)
-  sendWelcomeEmail(user).catch(err => {
-    console.error('Failed to send welcome email:', err);
-  });
-
-  // Remove sensitive fields
+  // Remove sensitive fields  
   const userResponse = {
     id: user._id,
     email: user.email,
@@ -72,14 +92,14 @@ const register = asyncHandler(async (req, res) => {
     isPremium: user.isPremium,
     isPremiumActive: user.isPremiumActive,
     role: user.role,
+    isEmailVerified: user.isEmailVerified,
     createdAt: user.createdAt,
   };
 
   return ApiResponse.created(res, {
     user: userResponse,
-    accessToken,
-    refreshToken,
-  }, 'Account created successfully');
+    message: 'Account created successfully. Please check your email to verify your account.',
+  }, 'Registration successful');
 });
 
 const login = asyncHandler(async (req, res) => {
@@ -98,6 +118,11 @@ const login = asyncHandler(async (req, res) => {
   const isPasswordValid = await user.comparePassword(password);
   if (!isPasswordValid) {
     return ApiResponse.unauthorizedError(res, 'Invalid email or password');
+  }
+
+  // Check if email is verified
+  if (!user.isEmailVerified) {
+    return ApiResponse.unauthorizedError(res, 'Please verify your email address before logging in. Check your email for the verification code.');
   }
 
   // Update last login and device ID
@@ -192,6 +217,11 @@ const refreshToken = asyncHandler(async (req, res) => {
 const logout = asyncHandler(async (req, res) => {
   const { refreshToken } = req.body;
   const user = req.user;
+
+  // Ensure refreshTokens array exists
+  if (!user.refreshTokens) {
+    user.refreshTokens = [];
+  }
 
   if (refreshToken) {
     // Remove specific refresh token
@@ -308,11 +338,217 @@ const deleteAccount = asyncHandler(async (req, res) => {
   return ApiResponse.success(res, null, 'Account deactivated successfully');
 });
 
+const forgotPassword = asyncHandler(async (req, res) => {
+  const { email } = req.body;
+
+  const user = await User.findOne({ 
+    email: email.toLowerCase(),
+    isActive: true,
+  });
+
+  if (!user) {
+    // Don't reveal if user exists or not for security
+    return ApiResponse.success(res, null, 'If an account with this email exists, a password reset link has been sent.');
+  }
+
+  // Generate password reset code
+  const resetCode = user.generatePasswordResetCode();
+  await user.save({ validateBeforeSave: false });
+
+  try {
+    // Send password reset email
+    await sendPasswordResetCode(user, resetCode);
+    
+    return ApiResponse.success(res, null, 'Password reset code has been sent to your email address.');
+  } catch (error) {
+    // Clear the reset code if email fails
+    user.passwordResetCode = undefined;
+    user.passwordResetExpires = undefined;
+    await user.save({ validateBeforeSave: false });
+    
+    return ApiResponse.internalServerError(res, 'There was an error sending the password reset code. Please try again.');
+  }
+});
+
+const resetPassword = asyncHandler(async (req, res) => {
+  const { code, password } = req.body;
+
+  // Find user by valid reset code
+  const user = await User.findOne({ 
+    passwordResetCode: code,
+    passwordResetExpires: { $gt: Date.now() },
+  });
+  
+  if (!user) {
+    return ApiResponse.error(res, 'Password reset code is invalid or has expired.', 400);
+  }
+
+  // Update password and clear reset code
+  user.password = password;
+  user.passwordResetCode = undefined;
+  user.passwordResetExpires = undefined;
+  user.passwordResetLastSent = undefined;
+  
+  await user.save();
+
+  // Clear all refresh tokens to force re-login
+  user.refreshTokens = [];
+  await user.save();
+
+  return ApiResponse.success(res, null, 'Password has been reset successfully. Please log in with your new password.');
+});
+
+const requestEmailVerificationCode = asyncHandler(async (req, res) => {
+  const { email } = req.body;
+
+  const user = await User.findOne({ 
+    email: email.toLowerCase(),
+    isActive: true,
+  });
+
+  if (!user) {
+    return ApiResponse.notFoundError(res, 'User not found.');
+  }
+
+  if (user.isEmailVerified) {
+    return ApiResponse.error(res, 'Email is already verified.', 400);
+  }
+
+  // Check if can resend (3 minutes limit)
+  if (!user.canResendEmailVerification()) {
+    const waitTime = 3 - Math.floor((Date.now() - user.emailVerificationLastSent.getTime()) / (60 * 1000));
+    return ApiResponse.error(res, `Please wait ${waitTime} more minute(s) before requesting a new code.`, 400);
+  }
+
+  // Generate email verification code
+  const verificationCode = user.generateEmailVerificationCode();
+  await user.save({ validateBeforeSave: false });
+
+  try {
+    console.log(`Attempting to send verification code to ${user.email}, code: ${verificationCode}`);
+    // Send verification email
+    const emailResult = await sendEmailVerificationCode(user, verificationCode);
+    console.log('Email send result:', emailResult);
+    
+    return ApiResponse.success(res, null, 'Verification code has been sent to your email address.');
+  } catch (error) {
+    console.error('Failed to send verification email:', error);
+    // Clear the verification code if email fails
+    user.emailVerificationCode = undefined;
+    user.emailVerificationExpires = undefined;
+    user.emailVerificationLastSent = undefined;
+    await user.save({ validateBeforeSave: false });
+    
+    return ApiResponse.internalServerError(res, 'There was an error sending the verification code. Please try again.');
+  }
+});
+
+const verifyEmail = asyncHandler(async (req, res) => {
+  const { code } = req.body;
+
+  // Find user by valid verification code
+  const user = await User.findOne({ 
+    emailVerificationCode: code,
+    emailVerificationExpires: { $gt: Date.now() },
+  });
+  
+  if (!user) {
+    return ApiResponse.error(res, 'Email verification code is invalid or has expired.', 400);
+  }
+
+  // Update user as verified and clear verification code
+  user.isEmailVerified = true;
+  user.emailVerificationCode = undefined;
+  user.emailVerificationExpires = undefined;
+  user.emailVerificationLastSent = undefined;
+  user.lastLogin = new Date();
+  
+  await user.save();
+
+  // Generate tokens
+  const tokenPayload = { id: user._id, email: user.email, role: user.role };
+  const { accessToken, refreshToken } = jwt.generateTokens(tokenPayload);
+
+  // Add refresh token to user (keep only last 5 tokens)
+  user.refreshTokens.push({ token: refreshToken });
+  if (user.refreshTokens.length > 5) {
+    user.refreshTokens = user.refreshTokens.slice(-5);
+  }
+
+  await user.save();
+
+  // Send welcome email after successful verification (don't wait for it)
+  sendWelcomeEmail(user).catch(err => {
+    console.error('Failed to send welcome email:', err);
+  });
+
+  // Remove sensitive fields
+  const userResponse = {
+    id: user._id,
+    email: user.email,
+    username: user.username,
+    firstName: user.firstName,
+    lastName: user.lastName,
+    fullName: user.fullName,
+    credits: user.credits,
+    isPremium: user.isPremium,
+    isPremiumActive: user.isPremiumActive,
+    role: user.role,
+    profilePicture: user.profilePicture,
+    lastLogin: user.lastLogin,
+  };
+
+  return ApiResponse.success(res, {
+    user: userResponse,
+    accessToken,
+    refreshToken,
+  }, 'Email verified successfully. You are now logged in.');
+});
+
+const resendPasswordResetCode = asyncHandler(async (req, res) => {
+  const { email } = req.body;
+
+  const user = await User.findOne({ 
+    email: email.toLowerCase(),
+    isActive: true,
+  });
+
+  if (!user) {
+    // Don't reveal if user exists or not for security
+    return ApiResponse.success(res, null, 'If an account with this email exists, a password reset code has been sent.');
+  }
+
+  // Check if can resend (3 minutes limit)
+  if (!user.canResendPasswordReset()) {
+    const waitTime = 3 - Math.floor((Date.now() - user.passwordResetLastSent.getTime()) / (60 * 1000));
+    return ApiResponse.error(res, `Please wait ${waitTime} more minute(s) before requesting a new code.`, 400);
+  }
+
+  // Generate password reset code
+  const resetCode = user.generatePasswordResetCode();
+  await user.save({ validateBeforeSave: false });
+
+  try {
+    // Send password reset email
+    await sendPasswordResetCode(user, resetCode);
+    
+    return ApiResponse.success(res, null, 'Password reset code has been sent to your email address.');
+  } catch (error) {
+    // Clear the reset code if email fails
+    user.passwordResetCode = undefined;
+    user.passwordResetExpires = undefined;
+    user.passwordResetLastSent = undefined;
+    await user.save({ validateBeforeSave: false });
+    
+    return ApiResponse.internalServerError(res, 'There was an error sending the password reset code. Please try again.');
+  }
+});
+
 const googleSignIn = asyncHandler(async (req, res) => {
   const { idToken, email, firstName, lastName, googleId, photo } = req.body;
 
   if (!idToken || !email || !googleId) {
-    return ApiResponse.badRequestError(res, 'Google ID token, email, and Google ID are required');
+    return ApiResponse.error(res, 'Google ID token, email, and Google ID are required', 400);
   }
 
   try {
@@ -339,6 +575,14 @@ const googleSignIn = asyncHandler(async (req, res) => {
         { googleId: googleId }
       ],
     });
+
+    // Additional check to ensure googleId uniqueness if provided
+    if (!user && googleId) {
+      const existingGoogleUser = await User.findOne({ googleId: googleId });
+      if (existingGoogleUser && existingGoogleUser.email !== email.toLowerCase()) {
+        return ApiResponse.conflictError(res, 'This Google account is already linked to another user');
+      }
+    }
 
     if (user) {
       // User exists, update Google ID if not set
@@ -439,4 +683,9 @@ module.exports = {
   verifyToken,
   changePassword,
   deleteAccount,
+  forgotPassword,
+  resetPassword,
+  requestEmailVerificationCode,
+  verifyEmail,
+  resendPasswordResetCode,
 };

@@ -51,8 +51,7 @@ const userSchema = new mongoose.Schema({
   googleId: {
     type: String,
     default: null,
-    sparse: true,
-    unique: true,
+    sparse: true, // This allows multiple null values
   },
   role: {
     type: String,
@@ -62,6 +61,34 @@ const userSchema = new mongoose.Schema({
   isActive: {
     type: Boolean,
     default: true,
+  },
+  isEmailVerified: {
+    type: Boolean,
+    default: false,
+  },
+  emailVerificationCode: {
+    type: String,
+    default: null,
+  },
+  emailVerificationExpires: {
+    type: Date,
+    default: null,
+  },
+  emailVerificationLastSent: {
+    type: Date,
+    default: null,
+  },
+  passwordResetCode: {
+    type: String,
+    default: null,
+  },
+  passwordResetExpires: {
+    type: Date,
+    default: null,
+  },
+  passwordResetLastSent: {
+    type: Date,
+    default: null,
   },
   lastLogin: {
     type: Date,
@@ -124,6 +151,56 @@ userSchema.methods.deductCredits = async function(amount) {
 userSchema.methods.addCredits = async function(amount) {
   this.credits += amount;
   return await this.save();
+};
+
+// Method to generate 6-digit email verification code
+userSchema.methods.generateEmailVerificationCode = function() {
+  // Generate 6-digit code
+  const code = Math.floor(100000 + Math.random() * 900000).toString();
+  
+  this.emailVerificationCode = code;
+  this.emailVerificationExpires = Date.now() + 15 * 60 * 1000; // 15 minutes
+  this.emailVerificationLastSent = Date.now();
+  
+  return code;
+};
+
+// Method to generate 6-digit password reset code
+userSchema.methods.generatePasswordResetCode = function() {
+  // Generate 6-digit code
+  const code = Math.floor(100000 + Math.random() * 900000).toString();
+  
+  this.passwordResetCode = code;
+  this.passwordResetExpires = Date.now() + 15 * 60 * 1000; // 15 minutes
+  this.passwordResetLastSent = Date.now();
+  
+  return code;
+};
+
+// Method to verify email verification code
+userSchema.methods.verifyEmailCode = function(code) {
+  return this.emailVerificationCode === code && 
+         this.emailVerificationExpires > Date.now();
+};
+
+// Method to verify password reset code
+userSchema.methods.verifyPasswordResetCode = function(code) {
+  return this.passwordResetCode === code && 
+         this.passwordResetExpires > Date.now();
+};
+
+// Method to check if can resend email verification (3 minutes limit)
+userSchema.methods.canResendEmailVerification = function() {
+  if (!this.emailVerificationLastSent) return true;
+  const timeDiff = Date.now() - this.emailVerificationLastSent.getTime();
+  return timeDiff >= 3 * 60 * 1000; // 3 minutes
+};
+
+// Method to check if can resend password reset (3 minutes limit)
+userSchema.methods.canResendPasswordReset = function() {
+  if (!this.passwordResetLastSent) return true;
+  const timeDiff = Date.now() - this.passwordResetLastSent.getTime();
+  return timeDiff >= 3 * 60 * 1000; // 3 minutes
 };
 
 

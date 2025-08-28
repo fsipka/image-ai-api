@@ -50,30 +50,62 @@ const sendEmail = async (options) => {
 };
 
 const sendWelcomeEmail = async (user) => {
-  const subject = 'Welcome to Mobile App!';
+  const subject = 'Welcome to AI Image Generator! 🎨';
   const html = `
-    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-      <h2 style="color: #333;">Welcome to Mobile App, ${user.firstName}!</h2>
-      <p>Thank you for joining our community. You're all set to start generating amazing AI-powered images!</p>
-      
-      <div style="background-color: #f8f9fa; padding: 20px; margin: 20px 0; border-radius: 8px;">
-        <h3 style="color: #007bff; margin-top: 0;">Getting Started</h3>
-        <ul style="color: #555;">
-          <li>You start with <strong>5 free credits</strong></li>
-          <li>Each generation typically uses 1-2 credits</li>
-          <li>Watch ads to earn more credits</li>
-          <li>Upgrade to premium for unlimited generations</li>
-        </ul>
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff;">
+      <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 40px 20px; text-align: center;">
+        <div style="background-color: white; width: 80px; height: 80px; border-radius: 50%; margin: 0 auto 20px; display: flex; align-items: center; justify-content: center;">
+          <div style="font-size: 40px;">🎨</div>
+        </div>
+        <h1 style="color: white; margin: 0; font-size: 28px; font-weight: 600;">Welcome to AI Image Generator!</h1>
+        <p style="color: rgba(255, 255, 255, 0.9); margin: 12px 0 0; font-size: 16px;">Hi ${user.firstName}, you're all set!</p>
       </div>
       
-      <p style="color: #555;">
-        If you have any questions, feel free to reach out to our support team.
-      </p>
-      
-      <p style="margin-top: 30px; color: #888; font-size: 14px;">
-        Happy creating!<br>
-        The Mobile App Team
-      </p>
+      <div style="padding: 40px 20px;">
+        <p style="font-size: 16px; color: #374151; line-height: 24px; margin-bottom: 32px;">
+          Thank you for joining our community of creative minds! You now have access to powerful AI image generation tools that will help bring your imagination to life.
+        </p>
+        
+        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px; padding: 24px; margin: 32px 0;">
+          <h3 style="color: white; margin: 0 0 20px; font-size: 20px; font-weight: 600;">🚀 Getting Started</h3>
+          <div style="color: rgba(255, 255, 255, 0.95); font-size: 15px; line-height: 24px;">
+            <div style="display: flex; align-items: center; margin-bottom: 12px;">
+              <span style="background-color: rgba(255, 255, 255, 0.2); border-radius: 50%; width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center; margin-right: 12px; font-size: 12px; font-weight: 600;">1</span>
+              You start with <strong>1 free credit</strong> to test our service
+            </div>
+            <div style="display: flex; align-items: center; margin-bottom: 12px;">
+              <span style="background-color: rgba(255, 255, 255, 0.2); border-radius: 50%; width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center; margin-right: 12px; font-size: 12px; font-weight: 600;">2</span>
+              Each generation typically uses 1-2 credits
+            </div>
+            <div style="display: flex; align-items: center; margin-bottom: 12px;">
+              <span style="background-color: rgba(255, 255, 255, 0.2); border-radius: 50%; width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center; margin-right: 12px; font-size: 12px; font-weight: 600;">3</span>
+              Watch ads to earn more credits for free
+            </div>
+            <div style="display: flex; align-items: center;">
+              <span style="background-color: rgba(255, 255, 255, 0.2); border-radius: 50%; width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center; margin-right: 12px; font-size: 12px; font-weight: 600;">4</span>
+              Upgrade to premium for unlimited generations
+            </div>
+          </div>
+        </div>
+        
+        <div style="background-color: #f0f9ff; border: 1px solid #e0f2fe; border-radius: 8px; padding: 20px; margin: 32px 0;">
+          <h4 style="color: #0369a1; margin: 0 0 12px; font-size: 16px; font-weight: 600;">💡 Pro Tips</h4>
+          <ul style="color: #0c4a6e; margin: 0; padding-left: 16px; font-size: 14px; line-height: 20px;">
+            <li style="margin-bottom: 8px;">Be specific in your prompts for better results</li>
+            <li style="margin-bottom: 8px;">Experiment with different styles and moods</li>
+            <li>Use the advanced settings to fine-tune your images</li>
+          </ul>
+        </div>
+        
+        <p style="font-size: 16px; color: #374151; line-height: 24px; margin: 32px 0;">
+          If you have any questions or need help getting started, our support team is here to assist you.
+        </p>
+        
+        <div style="text-align: center; margin: 40px 0;">
+          <p style="font-size: 18px; color: #374151; margin: 0; font-weight: 600;">Happy creating! ✨</p>
+          <p style="font-size: 14px; color: #9ca3af; margin: 8px 0 0;">The AI Image Generator Team</p>
+        </div>
+      </div>
     </div>
   `;
 
@@ -81,35 +113,47 @@ const sendWelcomeEmail = async (user) => {
     to: user.email,
     subject,
     html,
-    text: `Welcome to Mobile App, ${user.firstName}! Thank you for joining our community.`,
+    text: `Welcome to AI Image Generator, ${user.firstName}! Thank you for joining our community. You're all set to start creating amazing AI-powered images!`,
   });
 };
 
-const sendPasswordResetEmail = async (user, resetToken) => {
-  const resetUrl = `${process.env.FRONTEND_URL || 'https://yourapp.com'}/reset-password?token=${resetToken}`;
-  
-  const subject = 'Password Reset Request';
+const sendEmailVerificationCode = async (user, verificationCode) => {
+  const subject = 'Email Verification Code';
   const html = `
-    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-      <h2 style="color: #333;">Password Reset Request</h2>
-      <p>Hi ${user.firstName},</p>
-      
-      <p>You recently requested to reset your password. Click the button below to reset it:</p>
-      
-      <div style="text-align: center; margin: 30px 0;">
-        <a href="${resetUrl}" style="background-color: #007bff; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block;">
-          Reset Password
-        </a>
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff;">
+      <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 40px 20px; text-align: center;">
+        <div style="background-color: white; width: 80px; height: 80px; border-radius: 50%; margin: 0 auto 20px; display: flex; align-items: center; justify-content: center;">
+          <div style="font-size: 40px;">📧</div>
+        </div>
+        <h1 style="color: white; margin: 0; font-size: 28px; font-weight: 600;">Email Verification</h1>
       </div>
       
-      <p style="color: #555;">
-        If the button doesn't work, you can copy and paste this link into your browser:
-      </p>
-      <p style="word-break: break-all; color: #007bff;">${resetUrl}</p>
-      
-      <p style="color: #888; font-size: 14px; margin-top: 30px;">
-        This link will expire in 1 hour. If you didn't request this password reset, please ignore this email.
-      </p>
+      <div style="padding: 40px 20px;">
+        <p style="font-size: 16px; color: #374151; margin-bottom: 24px;">
+          Hi <strong>${user.firstName}</strong>,
+        </p>
+        
+        <p style="font-size: 16px; color: #374151; line-height: 24px; margin-bottom: 32px;">
+          Thank you for signing up! Please enter the verification code below in the app to complete your registration and start generating amazing AI images.
+        </p>
+        
+        <div style="text-align: center; margin: 32px 0;">
+          <div style="background-color: #f8fafc; border: 2px dashed #667eea; border-radius: 12px; padding: 24px; display: inline-block;">
+            <p style="margin: 0 0 8px; font-size: 14px; color: #6b7280; font-weight: 600;">Your Verification Code</p>
+            <div style="font-family: 'Courier New', monospace; font-size: 32px; font-weight: bold; color: #667eea; letter-spacing: 4px;">${verificationCode}</div>
+          </div>
+        </div>
+        
+        <div style="background-color: #fef3c7; border-left: 4px solid #f59e0b; padding: 16px; margin: 32px 0; border-radius: 4px;">
+          <p style="margin: 0; font-size: 14px; color: #92400e;">
+            <strong>⏰ Important:</strong> This code will expire in 15 minutes. If you didn't request this code, please ignore this email.
+          </p>
+        </div>
+        
+        <p style="font-size: 14px; color: #9ca3af; text-align: center; margin-top: 32px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
+          The AI Image Generator Team
+        </p>
+      </div>
     </div>
   `;
 
@@ -117,7 +161,55 @@ const sendPasswordResetEmail = async (user, resetToken) => {
     to: user.email,
     subject,
     html,
-    text: `Hi ${user.firstName}, you requested to reset your password. Visit this link: ${resetUrl}`,
+    text: `Hi ${user.firstName}, your email verification code is: ${verificationCode}. This code will expire in 15 minutes.`,
+  });
+};
+
+const sendPasswordResetCode = async (user, resetCode) => {
+  const subject = 'Password Reset Code';
+  const html = `
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff;">
+      <div style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); padding: 40px 20px; text-align: center;">
+        <div style="background-color: white; width: 80px; height: 80px; border-radius: 50%; margin: 0 auto 20px; display: flex; align-items: center; justify-content: center;">
+          <div style="font-size: 40px;">🔐</div>
+        </div>
+        <h1 style="color: white; margin: 0; font-size: 28px; font-weight: 600;">Password Reset Code</h1>
+      </div>
+      
+      <div style="padding: 40px 20px;">
+        <p style="font-size: 16px; color: #374151; margin-bottom: 24px;">
+          Hi <strong>${user.firstName}</strong>,
+        </p>
+        
+        <p style="font-size: 16px; color: #374151; line-height: 24px; margin-bottom: 32px;">
+          We received a request to reset your password. Please enter the reset code below in the app to continue with resetting your password.
+        </p>
+        
+        <div style="text-align: center; margin: 32px 0;">
+          <div style="background-color: #fef2f2; border: 2px dashed #f5576c; border-radius: 12px; padding: 24px; display: inline-block;">
+            <p style="margin: 0 0 8px; font-size: 14px; color: #6b7280; font-weight: 600;">Your Reset Code</p>
+            <div style="font-family: 'Courier New', monospace; font-size: 32px; font-weight: bold; color: #f5576c; letter-spacing: 4px;">${resetCode}</div>
+          </div>
+        </div>
+        
+        <div style="background-color: #fef3c7; border-left: 4px solid #f59e0b; padding: 16px; margin: 32px 0; border-radius: 4px;">
+          <p style="margin: 0; font-size: 14px; color: #92400e;">
+            <strong>⏰ Important:</strong> This code will expire in 15 minutes. If you didn't request this password reset, please ignore this email.
+          </p>
+        </div>
+        
+        <p style="font-size: 14px; color: #9ca3af; text-align: center; margin-top: 32px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
+          The AI Image Generator Team
+        </p>
+      </div>
+    </div>
+  `;
+
+  return await sendEmail({
+    to: user.email,
+    subject,
+    html,
+    text: `Hi ${user.firstName}, your password reset code is: ${resetCode}. This code will expire in 15 minutes.`,
   });
 };
 
@@ -195,7 +287,8 @@ const sendLowCreditsNotification = async (user) => {
 module.exports = {
   sendEmail,
   sendWelcomeEmail,
-  sendPasswordResetEmail,
+  sendEmailVerificationCode,
+  sendPasswordResetCode,
   sendPremiumUpgradeEmail,
   sendLowCreditsNotification,
 };
