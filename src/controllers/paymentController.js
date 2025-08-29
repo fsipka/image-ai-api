@@ -403,15 +403,15 @@ const addCreditsFromRevenueCat = asyncHandler(async (req, res) => {
 
     const transaction = await Transaction.create(transactionData);
 
-    // Add credits to user account
-    await user.addCredits(credits);
+    // Skip credit addition during closed testing
+    // await user.addCredits(credits);
 
-    logger.info(`RevenueCat credits added: ${credits} for user ${user._id}, product ${productId}`);
+    logger.info(`RevenueCat purchase processed (no credits added during testing): ${credits} for user ${user._id}, product ${productId}`);
 
     return ApiResponse.success(res, {
       transactionId: transaction._id,
       creditsAdded: credits,
-      newBalance: user.credits + credits,
+      newBalance: user.credits, // Return current balance without adding credits
     }, 'Credits added successfully');
 
   } catch (error) {
